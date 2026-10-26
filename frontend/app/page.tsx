@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type Message = {
   id: number;
@@ -12,8 +12,26 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionToken, setSessionToken] = useState('');
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 1. Initialize session token on mount
+  useEffect(() => {
+    let token = localStorage.getItem('session_token');
+    if (!token) {
+      token = crypto.randomUUID();
+      localStorage.setItem('session_token', token);
+    }
+    setSessionToken(token);
+  }, []);
+
+  // 2. Auto-scroll to bottom when messages or loading state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+ const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
@@ -27,12 +45,17 @@ export default function Chat() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ 
+          session_token: sessionToken,
+          messages: newMessages 
+        }),
       });
 
-      if (!response.ok) throw new Error('Server error');
-
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.reply || `Server returned HTTP ${response.status}`);
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -42,14 +65,15 @@ export default function Chat() {
           content: data.reply || 'No response received.',
         },
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           role: 'assistant',
-          content: 'Unable to reach the transit AI backend.',
+          // Display the REAL error message in the chat bubble
+          content: error.message || 'An unknown error occurred.',
         },
       ]);
     } finally {
@@ -60,7 +84,7 @@ export default function Chat() {
   return (
     <main className="min-h-screen bg-slate-100 flex flex-col items-center">
       {/* Header */}
-      <header className="w-full bg-slate-900 border-b border-slate-800 py-4 px-6 text-center shadow-sm">
+      <header className="w-full bg-slate-900 border-b border-slate-800 py-4 px-6 text-center shadow-sm sticky top-0 z-10">
         <h1 className="text-lg font-semibold text-white tracking-wide">
           Sydney Transit AI Planner
         </h1>
@@ -70,7 +94,7 @@ export default function Chat() {
       </header>
 
       {/* Chat Container */}
-      <div className="flex-1 w-full max-w-2xl flex flex-col justify-between p-4 sm:p-6 pb-28">
+      <div className="flex-1 w-full max-w-2xl flex flex-col p-4 sm:p-6 pb-32">
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-16 text-slate-500 text-sm">
@@ -110,6 +134,9 @@ export default function Chat() {
               <span>Querying transit service data...</span>
             </div>
           )}
+          
+          {/* Invisible element to act as the scroll target */}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 

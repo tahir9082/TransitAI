@@ -1,3 +1,8 @@
 fastapi
 uvicorn
 openai
+alembic
+sqlalchemy
+asyncpg
+greenlet
+pytz
