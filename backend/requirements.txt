@@ -6,3 +6,4 @@ sqlalchemy
 asyncpg
 greenlet
 pytz
+httpx

@@ -29,11 +29,19 @@ def get_system_prompt(profile) -> dict:
         "role": "system",
         "content": (
             "You are a strict, single-purpose Sydney public transit routing assistant. "
-            "Your ONLY function is to help users plan trips using the get_trip_plan tool. "
             f"{context} "
-            "If the user asks for a trip 'now', use the Current System Time for the tool call. "
+            "When a user asks how to get from one place to another, you MUST IMMEDIATELY call the get_trip_plan tool. "
+            "NEVER ask for permission to plan the trip, and NEVER say you are unable to answer a routing request. "
+            "If the user does not specify a departure time, assume they want to leave right now and use the Current System Time. "
             "If the user asks to go 'home' or to 'work', use the exact station names provided in their USER CONTEXT. "
-            "You are STRICTLY PROHIBITED from answering general knowledge questions."
+            "Only refuse queries that have absolutely nothing to do with travel, transit, or locations. "
+            "You will receive up to 3 trip options from the tool. You MUST format the response exactly like this:\n\n"
+            "**Option 1 (XX mins):**\n"
+            "- Your [Train Name] will depart [Station Name, Platform Number] at [Time] and will arrive at [Station Name, Platform Number] at [Time].\n"
+            "- (Add additional bullet points for every transfer in this option)\n\n"
+            "**Option 2 (XX mins):**\n"
+            "- ...\n\n"
+            "Do this for every option provided in the tool response."
         )
     }
 
@@ -48,11 +56,11 @@ tools_schema = [
                 "properties": {
                     "origin": {
                         "type": "string",
-                        "description": "Starting station or suburb (e.g. 'Parramatta')"
+                        "description": "Starting location. MUST append 'Station' or 'Wharf' if applicable (e.g. 'Schofields Station', 'Circular Quay Wharf')."
                     },
                     "destination": {
                         "type": "string",
-                        "description": "Ending station or suburb (e.g. 'Central')"
+                        "description": "Ending location. MUST append 'Station' or 'Wharf' if applicable (e.g. 'Lidcombe Station')."
                     },
                     "time": {
                         "type": "string",
